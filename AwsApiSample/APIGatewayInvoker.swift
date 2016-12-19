@@ -82,12 +82,12 @@ class APIGatewayInvoker {
     ///   - urlString: URL
     ///   - credentials: credentials
     ///   - completion: callbacks data or error
-    func invoke(urlString: String, credentials: CognitoCredentials, completion: @escaping (Data?, Error?) -> Void) {
+    func invoke(urlString: String, credentials: CognitoCredentials, apiKey: String? = nil, completion: @escaping (Data?, Error?) -> Void) {
         let now = Date()
         
         let host = URL(string: urlString)!.host!
         let timeStamp = APIGatewayUtility.utcDateString(format: .second, date: now)
-        let headers: [String : String] = [
+        var headers: [String : String] = [
             "Accept" : "application/json",
             "Content-Type" : "application/json",
             "Host" : host,
@@ -95,6 +95,10 @@ class APIGatewayInvoker {
             "X-Amz-Date" : timeStamp,
             "X-Amz-Security-Token" : credentials.sessionToken
         ]
+        
+        if let apiKey = apiKey {
+            headers["x-api-key"] = apiKey
+        }
 
         let signParameter = SignParameter(
             date: now,
