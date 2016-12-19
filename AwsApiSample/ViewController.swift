@@ -23,7 +23,6 @@ class ViewController: UIViewController {
                 
                 invoker.invoke(
                     urlString: "<API URL>",
-                    query: [:],
                     credentials: credentials,
                     completion: { (data, error) in
                         guard let data = data else { return }

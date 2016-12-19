@@ -80,16 +80,14 @@ class APIGatewayInvoker {
     ///
     /// - Parameters:
     ///   - urlString: URL
-    ///   - query: query
     ///   - credentials: credentials
     ///   - completion: callbacks data or error
-    func invoke(urlString: String, query: [String : String], credentials: CognitoCredentials, completion: @escaping (Data?, Error?) -> Void) {
+    func invoke(urlString: String, credentials: CognitoCredentials, completion: @escaping (Data?, Error?) -> Void) {
         let now = Date()
         
-        let url = URL(string: urlString)!
-        let host = url.host!
+        let host = URL(string: urlString)!.host!
         let timeStamp = APIGatewayUtility.utcDateString(format: .second, date: now)
-        let headers = [
+        let headers: [String : String] = [
             "Accept" : "application/json",
             "Content-Type" : "application/json",
             "Host" : host,
@@ -97,24 +95,47 @@ class APIGatewayInvoker {
             "X-Amz-Date" : timeStamp,
             "X-Amz-Security-Token" : credentials.sessionToken
         ]
-        
-        var request = URLRequest(url: url)
-        request.allHTTPHeaderFields = headers
-        let signedRequest = AWSV4Signer.sign(request: request,
-                                             date: now,
-                                             region: region,
-                                             service: "execute-api",
-                                             accessKey: credentials.accessKeyId,
-                                             secretKey: credentials.secretKey)
-        
-        let task = URLSession.shared.dataTask(with: signedRequest) { (data, response, error) in
-            completion(data, error)
-        }
-        task.resume()
+
+        let signParameter = SignParameter(
+            date: now,
+            region: region,
+            service: "execute-api",
+            accessKey: credentials.accessKeyId,
+            secretKey: credentials.secretKey)
+        get(urlString: urlString, headers: headers, signParameter: signParameter, completion: completion)
     }
 }
 
 private extension APIGatewayInvoker {
+    
+    struct SignParameter {
+        let date: Date
+        let region: String
+        let service: String
+        let accessKey: String
+        let secretKey: String
+    }
+    
+    func get(urlString: String, headers: [String : String], signParameter: SignParameter? = nil, completion: @escaping (Data?, Error?) -> Void) {
+        let url = URL(string: urlString)!
+        var request = URLRequest(url: url)
+        request.allHTTPHeaderFields = headers
+        
+        if let signParameter = signParameter {
+            request = AWSV4Signer.sign(request: request,
+                                       date: signParameter.date,
+                                       region: signParameter.region,
+                                       service: signParameter.service,
+                                       accessKey: signParameter.accessKey,
+                                       secretKey: signParameter.secretKey)
+        }
+        
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            completion(data, error)
+        }
+        task.resume()
+        
+    }
     
     func post(urlString: String, headers: [String : String], bodyJson: [String : String], completion: @escaping (Data?, Error?) -> Void) {
         var request = URLRequest(
