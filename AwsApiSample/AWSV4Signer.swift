@@ -70,7 +70,7 @@ private extension AWSV4Signer {
         
         let lines: [String] = [
             method,
-            path, // TODO: URIエンコード
+            path.addingPercentEncoding(withAllowedCharacters: NSCharacterSet.urlQueryAllowed)!,
             canonicalQuery,
             canonicalHeaders,
             "",
@@ -81,14 +81,15 @@ private extension AWSV4Signer {
     }
     
     class func createCanonicalQuery(from query: String) -> String {
-        return query // TODO: URLエンコード
+        return query.addingPercentEncoding(withAllowedCharacters: NSCharacterSet.urlQueryAllowed)!
     }
     
     class func createCanonicalHeaders(from headers: [String : String]) -> String {
-        // TODO: 連続スペースを単一スペースにする
         let lowerKeyHeaders = headers.reduce([:]) { (result: [String : String], item: (key: String, value: String)) -> [String : String] in
             var result = result
-            result[item.key.lowercased()] = item.value.trimmingCharacters(in: .whitespaces)
+            result[item.key.lowercased()] = item.value
+                .trimmingCharacters(in: .whitespaces)
+                .replacingOccurrences(of: " +", with: " ", options: .regularExpression, range: nil)
             return result
         }
         return convertToString(from: lowerKeyHeaders, keyValueSeparator: ":", itemSeparator: "\n")
